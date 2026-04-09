@@ -62,8 +62,8 @@ int main (int argc, char **argv)
         NULL,       // source nodes (none, if NULL)
         true,      // make the graph undirected, if true
         true,      // remove self-edges, if true
-        true,      // return G->A as structural, if true,
-        GrB_UINT64,// prefered GrB_Type of G->A; null if no preference
+        false,      // return G->A as structural, if true,
+        GrB_FP64,// prefered GrB_Type of G->A; null if no preference
         false,     // ensure all entries are positive, if true
         argc, argv)) ;  // input to this main program
     t = LAGraph_WallClockTime ( ) - t ;
@@ -86,6 +86,33 @@ int main (int argc, char **argv)
     //--------------------------------------------------------------------------
     // check the results 
     //--------------------------------------------------------------------------
+
+    GrB_Index n;
+    GrB_Matrix_nrows(&n, A);
+    
+    GrB_Matrix AT; //transpose matrix
+    GrB_Matrix_new(&AT, GrB_FP64, n, n);
+    GrB_transpose(AT, NULL, NULL, A, NULL);
+
+    GrB_Matrix Sum; //sum of matrix A and AT
+    GrB_Matrix_new(&Sum, GrB_FP64, n, n);
+    GrB_eWiseAdd(Sum, NULL, NULL, GrB_PLUS_FP64, A, AT, NULL);
+
+    // summing matrix A and AT for each element
+    double total_weight = 0.0;
+    GrB_Index sum_nvals;
+    GrB_Matrix_nvals(&sum_nvals, Sum);
+    GrB_Index* I_sum = malloc(sum_nvals * sizeof(GrB_Index));
+    GrB_Index* J_sum = malloc(sum_nvals * sizeof(GrB_Index));
+    double* V_sum = malloc(sum_nvals * sizeof(double));
+    GrB_Matrix_extractTuples_FP64(I_sum, J_sum, V_sum, &sum_nvals, Sum);
+
+    for (GrB_Index i = 0; i < sum_nvals; i++) {
+        total_weight += V_sum[i];
+    }
+    total_weight /= 2;  // each vertex is counted twice
+
+    printf("MST total weight: %.6f\n", total_weight); //printing results of sum
 
     t = LAGraph_WallClockTime ( ) ;
     // TODO
